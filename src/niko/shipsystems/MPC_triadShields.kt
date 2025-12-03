@@ -179,7 +179,7 @@ class MPC_triadShields: BaseShipSystemScript(), DamageTakenModifier {
                 notNullDrone.mutableStats.engineDamageTakenMult.modifyMult("MPC_triadShield_${this}", 0f)
                 notNullDrone.mutableStats.dynamic.getStat(Stats.SHIELD_PIERCED_MULT).modifyMult("MPC_triadShield_${this}", 0f)
                 notNullDrone.shieldCenterEvenIfNoShield.set(0f, 0f)
-
+                notNullDrone.hullSize = ShipAPI.HullSize.FIGHTER
                 niko_MPC_reflectionUtils.invoke("updateFluxValuesFromStats", notNullDrone.fluxTracker)
                 for (layer in notNullDrone.activeLayers.toMutableSet()) {
                     notNullDrone.activeLayers.remove(layer)
