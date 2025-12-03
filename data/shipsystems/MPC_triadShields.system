@@ -1,0 +1,20 @@
+{
+	"id":"MPC_triadShields",
+	"type":"PHASE_CLOAK",
+	"aiType":"CUSTOM",
+	"aiScript":"niko.shipsystems.ai.MPC_triadShieldsAI",
+	
+	"statsScript":"niko.shipsystems.MPC_triadShields",
+	"blockActionsWhileChargingDown":false,
+	
+	"canNotCauseOverload":true,
+	
+	"clampTurnRateAfter":false,
+	"clampMaxSpeedAfter":false,
+	
+	"shipAlpha":1,
+	
+	"useSound":"MPC_triadShieldsOn",
+	"loopSound":"pseudoparticle_jet_loop",
+	"deactivateSound":"MPC_triadShieldsOff",
+}

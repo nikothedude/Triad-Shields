@@ -1,0 +1,11 @@
+{
+	# TRIAD
+	"MPC_triadShieldsOn":
+	[
+		{"file":"sounds/sfx_shields/shields_up_dweller.ogg","pitch":1.5,"volume":1.2},
+	],
+	"MPC_triadShieldsOff":
+	[
+		{"file":"sounds/sfx_shields/shields_down_dweller.ogg","pitch":1.5,"volume":1.2},
+	],
+}

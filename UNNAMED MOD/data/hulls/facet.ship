@@ -1,0 +1,10 @@
+{
+    "builtInMods": [
+        "automated",
+        "fluxbreakers",
+        "shard_spawner",
+        "do_not_back_off",
+		"MPC_triadShieldsHullmod"
+    ],
+	"hullId": "facet",
+}

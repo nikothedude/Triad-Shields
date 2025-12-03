@@ -1,0 +1,9 @@
+{
+    "builtInMods": [
+        "automated",
+        "fluxbreakers",
+        "shard_spawner",
+		"MPC_triadShieldsHullmod"
+    ],
+	"hullId": "tesseract",
+}
