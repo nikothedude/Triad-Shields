@@ -214,7 +214,7 @@ class MPC_triadShields: BaseShipSystemScript(), DamageTakenModifier {
             val colRadius = entity?.collisionRadius ?: 0f
             var dist = MathUtils.getDistance(realLoc, loc) - colRadius
             if (entity?.tailEnd != null && entity is MovingRay) {
-                dist += (MathUtils.getDistance(entity.tailEnd, entity.location))
+                dist += (MathUtils.getDistance(entity.tailEnd, loc))
             }
             //val checkLoc = MathUtils.getPointOnCircumference(check.location, check.collisionRadius, VectorUtils.getAngle(check.location, realLoc))
             //if (!CollisionUtils.isPointWithinCollisionCircle(checkLoc, drone)) continue
