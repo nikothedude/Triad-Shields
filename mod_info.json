@@ -1,9 +1,9 @@
 {
     "id":"niko_triadShields", # For the convenience of troubleshooters, include your name and the mod name, not just an acronym.
-	"name":"UNNAMED MOD", # Displayed to the player
+	"name":"Triad Shields", # Displayed to the player
 	"author":"niko",
     "utility":"false",
-	"version":"0.0.0",
+	"version":"1.0.0",
 	"description":"omega.",
     "gameVersion": "0.98a-RC5",
   	"jars":["jars/Triad_Shields.jar"],
