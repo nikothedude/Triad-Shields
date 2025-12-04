@@ -15,8 +15,10 @@ import com.fs.starfarer.combat.ai.attack.AttackAIModule
 import com.fs.starfarer.combat.ai.ooOO
 import com.fs.starfarer.combat.entities.Ship
 import niko.niko_MPC_reflectionUtils
+import niko.subsystems.MPC_triadShieldSubsystem
 import org.lwjgl.util.vector.Vector2f
 import org.magiclib.kotlin.createDefaultShipAI
+import org.magiclib.subsystems.addSubsystem
 
 class MPC_triadShieldsHmod: BaseHullMod() {
 
@@ -36,7 +38,7 @@ class MPC_triadShieldsHmod: BaseHullMod() {
 
         if (ship == null || id == null) return
 
-        ship.setShield(ShieldAPI.ShieldType.NONE, 0f, 1f, 0f)
+        ship.addSubsystem(MPC_triadShieldSubsystem(ship))
         return
 
         ship.setShield(ShieldAPI.ShieldType.PHASE, 0f, 1f, 0f)

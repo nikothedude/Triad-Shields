@@ -498,8 +498,7 @@ class MPC_triadShields: BaseShipSystemScript(), DamageTakenModifier {
         }
     }
 
-    class TriadShieldVisuals(var ship: ShipAPI, var script: MPC_triadShields) :
-        com.fs.starfarer.api.combat.BaseCombatLayeredRenderingPlugin() {
+    class TriadShieldVisuals(var ship: ShipAPI, var script: MPC_triadShields): BaseCombatLayeredRenderingPlugin() {
         var pieces: MutableList<ShieldPiece> = ArrayList<ShieldPiece>()
         var connections: MutableList<ShieldPieceConnection> = ArrayList<ShieldPieceConnection>()
 
@@ -587,10 +586,8 @@ class MPC_triadShields: BaseShipSystemScript(), DamageTakenModifier {
         override fun render(layer: CombatEngineLayers?, viewport: ViewportAPI) {
             var alphaMult = viewport.alphaMult
 
-            var system = ship.phaseCloak
-            if (system == null) system = ship.system
             if (ship.isDoNotRenderShield) return
-            alphaMult *= system.effectLevel
+            alphaMult *= script.effectLevel
 
             alphaMult *= ship.alphaMult
             alphaMult *= ship.extraAlphaMult2
