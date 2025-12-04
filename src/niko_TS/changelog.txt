@@ -1,6 +1,10 @@
 1.1.0
 NOT SAVE COMPATIBLE lol sorry
 
+Refactored all the tags and classes to use a TS prefix
+
 Fixes the rare collision bug TPCs and other rays had with the shields
 Added smod penalties
 AI activates the shield a lot more now
+
+a few more tweaks
