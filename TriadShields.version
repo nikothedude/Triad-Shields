@@ -14,7 +14,7 @@
     # created after October 2012 will not have a Public folder, unfortunately.
     #
     # Example links for common hosts:
-    "masterVersionFile":"https://raw.githubusercontent.com/nikothedude/MorePlanetaryConditions/release/niko_MPC.version",
+    "masterVersionFile":"https://raw.githubusercontent.com/nikothedude/Triad-Shields/refs/heads/release/TriadShields.version",
 
     "modName":"Triad Shields",
 
