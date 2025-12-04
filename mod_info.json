@@ -7,7 +7,7 @@
 	"description":"omega.",
     "gameVersion": "0.98a-RC5",
   	"jars":["jars/Triad_Shields.jar"],
-    "modPlugin":"niko.TS_modPlugin",
+    "modPlugin":"niko_TS.TS_modPlugin",
     "dependencies": [
           {
               "id": "lw_lazylib",

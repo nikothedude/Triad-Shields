@@ -1,10 +1,10 @@
 {
-	"id":"MPC_triadShields",
+	"id":"TS_triadShields",
 	"type":"PHASE_CLOAK",
 	"aiType":"CUSTOM",
-	"aiScript":"niko.shipsystems.ai.MPC_triadShieldsAI",
+	"aiScript":"niko_TS.shipsystems.ai.TS_triadShieldsAI",
 	
-	"statsScript":"niko.shipsystems.MPC_triadShields",
+	"statsScript":"niko_TS.shipsystems.TS_triadShields",
 	"blockActionsWhileChargingDown":false,
 	
 	"canNotCauseOverload":true,
@@ -14,7 +14,7 @@
 	
 	"shipAlpha":1,
 	
-	"useSound":"MPC_triadShieldsOn",
+	"useSound":"TS_triadShieldsOn",
 	"loopSound":"pseudoparticle_jet_loop",
-	"deactivateSound":"MPC_triadShieldsOff",
+	"deactivateSound":"TS_triadShieldsOff",
 }

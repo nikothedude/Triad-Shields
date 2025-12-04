@@ -1,0 +1,6 @@
+1.1.0
+SAVE COMPATIBLE
+
+Fixes the rare collision bug TPCs and other rays had with the shields
+Added smod penalties
+AI activates the shield al ot more now
