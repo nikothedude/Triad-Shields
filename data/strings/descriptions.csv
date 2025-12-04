@@ -1,0 +1,6 @@
+id,type,text1,text2,text3,text4,text5,notes
+MPC_triadShields,SHIP_SYSTEM,"Deploys a skinshield around the ship that blocks incoming fire.
+
+The shield is comprised of small segments, each with its own strength and regeneration. Once broken, it takes a moment to recharge.
+
+Ineffective against explosives and beams.",Defensive,,,,

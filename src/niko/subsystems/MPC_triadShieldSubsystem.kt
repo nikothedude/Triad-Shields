@@ -5,15 +5,18 @@ import com.fs.starfarer.api.combat.ShipAPI
 import com.fs.starfarer.api.combat.ShipSystemSpecAPI
 import com.fs.starfarer.api.util.Misc
 import niko.MPC_triadShieldsAICore
-import niko.MPC_triadShieldsCore
-import niko.ReflectionUtilsTwo
+import niko.niko_MPC_reflectionUtils
 import niko.shipsystems.MPC_triadShields
 import org.magiclib.subsystems.MagicShipSystemSubsystem
-import org.magiclib.subsystems.MagicSubsystem
 
 class MPC_triadShieldSubsystem(ship: ShipAPI): MagicShipSystemSubsystem(ship) {
 
-    val ai = MPC_triadShieldsAICore(ship)
+    lateinit var ai: MPC_triadShieldsAICore
+
+    override fun init() {
+        super.init()
+        ai = MPC_triadShieldsAICore(ship, getSys())
+    }
 
     override fun hasCharges(): Boolean {
         return false
@@ -25,10 +28,10 @@ class MPC_triadShieldSubsystem(ship: ShipAPI): MagicShipSystemSubsystem(ship) {
 
     override fun shouldActivateAI(amount: Float): Boolean {
         if (state == State.ACTIVE || state == State.IN) {
-            return ai.getCommand() == MPC_triadShieldsAICore.Command.DEACTIVATE
+            return ai?.getCommand() == MPC_triadShieldsAICore.Command.DEACTIVATE
         }
         if (state == State.READY || state == State.OUT) {
-            return ai.getCommand() == MPC_triadShieldsAICore.Command.ACTIVATE
+            return ai?.getCommand() == MPC_triadShieldsAICore.Command.ACTIVATE
         }
         return false
     }
@@ -56,7 +59,15 @@ class MPC_triadShieldSubsystem(ship: ShipAPI): MagicShipSystemSubsystem(ship) {
     }
 
     fun getSpec(): ShipSystemSpecAPI = Global.getSettings().getShipSystemSpec(shipSystemId)
-    fun getSys(): MPC_triadShields = ReflectionUtilsTwo.get("system", this) as MPC_triadShields
+    fun getSys(): MPC_triadShields = niko_MPC_reflectionUtils.get("system", this, MagicShipSystemSubsystem::class.java) as MPC_triadShields
+
+    override fun onShipDeath() {
+        super.onShipDeath()
+
+        if (state != State.OUT && state != State.READY && state != State.COOLDOWN) {
+            setState(State.OUT)
+        }
+    }
 
     override fun advance(amount: Float, isPaused: Boolean) {
         super.advance(amount, isPaused)
@@ -66,6 +77,12 @@ class MPC_triadShieldSubsystem(ship: ShipAPI): MagicShipSystemSubsystem(ship) {
         val spec = getSpec()
         if (state == State.ACTIVE && !isPaused) {
             Global.getSoundPlayer().playLoop(spec.loopSound, ship, 1f, 1f, ship.location, Misc.ZERO, 1f, 0f)
+        }
+
+        if (ship.fluxTracker.isVenting || ship.fluxTracker.isOverloaded) {
+            if (state != State.OUT && state != State.READY && state != State.COOLDOWN) {
+                setState(State.OUT)
+            }
         }
     }
 

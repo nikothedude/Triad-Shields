@@ -3,12 +3,13 @@ package niko
 import com.fs.starfarer.api.combat.DamageType
 import com.fs.starfarer.api.combat.ShipAPI
 import com.fs.starfarer.api.combat.ShipwideAIFlags
+import niko.shipsystems.MPC_triadShields
 import org.lazywizard.lazylib.MathUtils
 import org.lazywizard.lazylib.VectorUtils
 import org.lazywizard.lazylib.combat.AIUtils
 import org.lazywizard.lazylib.combat.CombatUtils
 
-class MPC_triadShieldsAICore(val ship: ShipAPI) {
+class MPC_triadShieldsAICore(val ship: ShipAPI, val sys: MPC_triadShields) {
 
     companion object {
         const val EVAL_RANGE = 5000f
@@ -90,7 +91,7 @@ class MPC_triadShieldsAICore(val ship: ShipAPI) {
         }
 
         if (ship.fluxLevel >= 0.8f) threat *= 0.5f // we want to drop shields...
-        if (ship.fluxLevel >= 0.98f) {
+        if (ship.fluxLevel >= 0.9f) {
             threat *= 0.15f
 
             if (ship.hullLevel > 0.1f) {
@@ -98,6 +99,10 @@ class MPC_triadShieldsAICore(val ship: ShipAPI) {
             }
         }
         if (ship.hullLevel <= 0.2f) threat *= 2f // uh oh
+
+        if (sys.approximateShieldStrength() < 0.2f) {
+            threat *= 0.15f // its useless to keep shields up
+        }
 
         if (threat >= ACTIVATE_THRESH) {
             return Command.ACTIVATE

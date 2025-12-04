@@ -11,5 +11,6 @@
     <orderEntry type="library" name="LazyLib" level="project" />
     <orderEntry type="library" name="ss" level="project" />
     <orderEntry type="library" name="Kotlin-Runtime" level="project" />
+    <orderEntry type="library" name="Graphics" level="project" />
   </component>
 </module>
