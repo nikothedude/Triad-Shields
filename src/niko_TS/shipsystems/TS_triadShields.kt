@@ -219,12 +219,11 @@ class TS_triadShields: BaseShipSystemScript(), DamageTakenModifier {
                 }
             }
 
-            val colRadius = entity?.collisionRadius ?: 0f
             if (entity?.tailEnd != null && entity is MovingRay) {
                 // todo fix
 
-                val rayDist = (MathUtils.getDistance(entity.tailEnd, loc)) / 4f
-                loc = MathUtils.getPointOnCircumference(entity.location, rayDist, Misc.normalizeAngle(entity.facing))
+                //val rayDist = (MathUtils.getDistance(entity.tailEnd, loc)) / 4f
+                loc = MathUtils.getPointOnCircumference(entity.location, entity.collisionRadius / 2f, Misc.normalizeAngle(entity.facing))
                 /*Global.getCombatEngine().addHitParticle(
                     loc,
                     Misc.ZERO,
@@ -410,6 +409,7 @@ class TS_triadShields: BaseShipSystemScript(), DamageTakenModifier {
         }
 
         private fun regen(amount: Float) {
+            if (ship.isPhased) return
             if (broken()) {
                 downtime -= amount
                 downtime = downtime.coerceAtLeast(0f)
@@ -429,11 +429,12 @@ class TS_triadShields: BaseShipSystemScript(), DamageTakenModifier {
             var damage = damage
             if (damage == null && source != null) damage = source.damage ?: return
             var realDamage = damage!!.damage
+            realDamage *= ship.mutableStats.shieldDamageTakenMult.modified
             realDamage *= when (damage.type) {
-                DamageType.KINETIC -> 2f
-                DamageType.HIGH_EXPLOSIVE -> 0.5f
-                DamageType.FRAGMENTATION -> 0.25f
-                DamageType.ENERGY -> 1f
+                DamageType.KINETIC -> 2f * ship.mutableStats.kineticShieldDamageTakenMult.modified
+                DamageType.HIGH_EXPLOSIVE -> 0.5f * ship.mutableStats.highExplosiveShieldDamageTakenMult.modified
+                DamageType.FRAGMENTATION -> 0.25f * ship.mutableStats.fragmentationShieldDamageTakenMult.modified
+                DamageType.ENERGY -> 1f * ship.mutableStats.energyShieldDamageTakenMult.modified
                 DamageType.OTHER -> 1f
             }
             if (damage.isDps) realDamage *= 0.1f
@@ -441,18 +442,31 @@ class TS_triadShields: BaseShipSystemScript(), DamageTakenModifier {
             realDamage *= fluxEfficiency
             adjustHealth(-realDamage)
             realDamage /= fluxEfficiency
+
             val result = ReflectionUtilsTwo.invoke("applyDamage", drone!!, realLoc, damage, true, realDamage, Any()) as ApplyDamageResultAPI
             source?.let { ReflectionUtilsTwo.invoke("notifyDealtDamage", it, realLoc, result, drone, ignoreParams = true) }
 
-            val type = if (realDamage >= 600f) "heavy" else if (realDamage >= 250f) "solid" else "light"
+            if (damage.isDps) {
+                Global.getSoundPlayer().playLoop(
+                    "hit_shield_beam_loop",
+                    drone,
+                    1.5f,
+                    1f,
+                    realLoc,
+                    Misc.ZERO
+                )
+            } else {
+                val dmgType = if (damage.type == DamageType.ENERGY) "energy" else "gun"
+                val type = if (realDamage > 200) "heavy" else if (realDamage > 70) "solid" else "light"
 
-            Global.getSoundPlayer().playSound(
-                "hit_shield_${type}_gun",
-                1.5f,
-                1f,
-                realLoc,
-                Misc.ZERO
-            )
+                Global.getSoundPlayer().playSound(
+                    "hit_shield_${type}_${dmgType}",
+                    1.5f,
+                    1f,
+                    realLoc,
+                    Misc.ZERO
+                )
+            }
 
             fun createHitRipple(location: Vector2f, velocity: Vector2f, dmg: Float, direction: Float,
                                 shieldRadius: Float, dweller: Boolean) {
@@ -775,6 +789,15 @@ class TS_triadShields: BaseShipSystemScript(), DamageTakenModifier {
                         false
                     )
                 }
+                if (ship.isPhased) {
+                    Global.getCombatEngine().maintainStatusForPlayerShip(
+                        "TS_triadShieldsThree",
+                        "graphics/hullsys/TS_triadShields.png",
+                        "Triad Shields",
+                        "PHASED - REGENERATION PAUSED",
+                        true
+                    )
+                }
             }
 
             if (Global.getCombatEngine().isPaused) return
@@ -893,6 +916,8 @@ class TS_triadShields: BaseShipSystemScript(), DamageTakenModifier {
         if (shieldHit) return null
         if (param is DamagingExplosion) return blockExplosion(param, point, damage)
         if (param is BeamAPI) return blockBeam(param, point, damage)
+        if (param is EmpArcEntityAPI) return blockArc(param,  param.location, point, damage)
+        if (param == "EMP_SHIP_SYSTEM_PARAM") return blockArc(null, damage.stats.entity.location, point, damage)
 
         return null
     }
@@ -901,7 +926,7 @@ class TS_triadShields: BaseShipSystemScript(), DamageTakenModifier {
         val blockers = HashSet<ShieldPiece>()
 
         val visuals = visuals ?: return blockers
-        var point = Vector2f(point) as Vector2f
+        var point = Vector2f(point)
 
         var fails = 0f
         while (fails < RAYCAST_FAIL_TIMES_TIL_END) {
@@ -926,6 +951,26 @@ class TS_triadShields: BaseShipSystemScript(), DamageTakenModifier {
         }
 
          return blockers
+    }
+
+    private fun blockArc(
+        arc: Any?,
+        dest: Vector2f,
+        point: Vector2f,
+        damage: DamageAPI
+    ): String? {
+
+        val blockers = getBlockersInDirection(point, VectorUtils.getDirectionalVector(point, dest))
+        if (blockers.isEmpty()) return null
+
+        for (cell in blockers) {
+            damage.modifier.modifyMult("TS_triadShieldsCell", 0.5f / blockers.size)
+            cell.takeDamage(damage)
+            damage.modifier.unmodify("TS_triadShieldsCell")
+        }
+
+        damage.modifier.modifyMult("TS_triadShieldsBlocked", 0f)
+        return "TS_triadShieldsBlocked"
     }
 
     private fun blockExplosion(
