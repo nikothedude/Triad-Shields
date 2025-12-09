@@ -1,0 +1,3 @@
+This mod implements the unused triad shields system from starsector. The implementation is from me, niko, but the graphics are from vanilla.
+
+You may use this mod and its code however you please. Credit is always appreciated, but not needed! It would feel wrong to require credit for something that technically isnt mine...
