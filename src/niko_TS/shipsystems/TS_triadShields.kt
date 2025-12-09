@@ -24,6 +24,7 @@ import org.dark.shaders.distortion.DistortionShader
 import org.dark.shaders.distortion.RippleDistortion
 import org.lazywizard.lazylib.MathUtils
 import org.lazywizard.lazylib.VectorUtils
+import org.lazywizard.lazylib.ext.isZeroVector
 import org.lazywizard.lazylib.ext.rotateAroundPivot
 import org.lwjgl.opengl.GL11
 import org.lwjgl.util.vector.Vector2f
@@ -102,7 +103,7 @@ class TS_triadShields: BaseShipSystemScript(), DamageTakenModifier {
         }
     }
 
-    class ShieldPiece(var ship: ShipAPI, val system: TS_triadShields, upsideDown: Boolean, x: Float, y: Float, var side: Float) {
+    class ShieldPiece(var ship: ShipAPI, val system: TS_triadShields, upsideDown: Boolean, x: Float, y: Float, var side: Float, val coords: Pair<Int, Int>) {
         val interval = IntervalUtil(1f, 1f)
 
         var offset: Vector2f = Vector2f()
@@ -201,7 +202,7 @@ class TS_triadShields: BaseShipSystemScript(), DamageTakenModifier {
             }
         }
 
-        fun checkCollision(loc: Vector2f, entity: DamagingProjectileAPI? = null, useFastCheck: Boolean = false): Boolean {
+        fun checkCollision(loc: Vector2f, entity: DamagingProjectileAPI? = null): Boolean {
             if (entity?.source == ship || entity?.owner == ship.owner && (entity.collisionClass == CollisionClass.MISSILE_NO_FF || entity.collisionClass == CollisionClass.PROJECTILE_NO_FF)) {
                 return false
             }
@@ -215,7 +216,7 @@ class TS_triadShields: BaseShipSystemScript(), DamageTakenModifier {
                 val radius = entity.explosionSpecIfExplosion.radius
                 val dist = MathUtils.getDistance(realLoc, loc)
                 if (dist <= radius) {
-                    return useFastCheck
+                    return false
                 }
             }
 
@@ -223,7 +224,7 @@ class TS_triadShields: BaseShipSystemScript(), DamageTakenModifier {
                 // todo fix
 
                 //val rayDist = (MathUtils.getDistance(entity.tailEnd, loc)) / 4f
-                loc = MathUtils.getPointOnCircumference(entity.location, entity.collisionRadius / 2f, Misc.normalizeAngle(entity.facing))
+                loc = MathUtils.getPointOnCircumference(entity.location, entity.collisionRadius / 4f, Misc.normalizeAngle(entity.facing))
                 /*Global.getCombatEngine().addHitParticle(
                     loc,
                     Misc.ZERO,
@@ -425,25 +426,36 @@ class TS_triadShields: BaseShipSystemScript(), DamageTakenModifier {
             adjustHealth(base)
         }
 
-        fun takeDamage(damage: DamageAPI?, source: DamagingProjectileAPI? = null) {
+        fun takeDamage(damage: DamageAPI?, source: DamagingProjectileAPI? = null, propagate: Boolean = true) {
             var damage = damage
             if (damage == null && source != null) damage = source.damage ?: return
             var realDamage = damage!!.damage
+            val origDamage = damage.damage
             realDamage *= ship.mutableStats.shieldDamageTakenMult.modified
-            realDamage *= when (damage.type) {
-                DamageType.KINETIC -> 2f * ship.mutableStats.kineticShieldDamageTakenMult.modified
-                DamageType.HIGH_EXPLOSIVE -> 0.5f * ship.mutableStats.highExplosiveShieldDamageTakenMult.modified
-                DamageType.FRAGMENTATION -> 0.25f * ship.mutableStats.fragmentationShieldDamageTakenMult.modified
-                DamageType.ENERGY -> 1f * ship.mutableStats.energyShieldDamageTakenMult.modified
+            val damageTypeMult = when (damage.type) {
+                DamageType.KINETIC -> 2f
+                DamageType.HIGH_EXPLOSIVE -> 0.5f
+                DamageType.FRAGMENTATION -> 0.25f
+                DamageType.ENERGY -> 1f
                 DamageType.OTHER -> 1f
             }
+            realDamage *= damageTypeMult
+            realDamage *= when (damage.type) {
+                DamageType.KINETIC -> ship.mutableStats.kineticShieldDamageTakenMult.modified
+                DamageType.HIGH_EXPLOSIVE -> ship.mutableStats.highExplosiveShieldDamageTakenMult.modified
+                DamageType.FRAGMENTATION -> ship.mutableStats.fragmentationShieldDamageTakenMult.modified
+                DamageType.ENERGY -> ship.mutableStats.energyShieldDamageTakenMult.modified
+                DamageType.OTHER -> 1f
+            }
+            realDamage *= fluxEfficiency
             if (damage.isDps) realDamage *= 0.1f
             val realLoc = getRealLoc()
-            realDamage *= fluxEfficiency
-            adjustHealth(-realDamage)
-            realDamage /= fluxEfficiency
 
-            val result = ReflectionUtilsTwo.invoke("applyDamage", drone!!, realLoc, damage, true, realDamage, Any()) as ApplyDamageResultAPI
+            val currHp = health
+            adjustHealth(-realDamage)
+            val diff = (currHp - health)
+
+            val result = ReflectionUtilsTwo.invoke("applyDamage", drone!!, realLoc, damage, true, origDamage, Any()) as ApplyDamageResultAPI
             source?.let { ReflectionUtilsTwo.invoke("notifyDealtDamage", it, realLoc, result, drone, ignoreParams = true) }
 
             if (damage.isDps) {
@@ -456,16 +468,18 @@ class TS_triadShields: BaseShipSystemScript(), DamageTakenModifier {
                     Misc.ZERO
                 )
             } else {
-                val dmgType = if (damage.type == DamageType.ENERGY) "energy" else "gun"
-                val type = if (realDamage > 200) "heavy" else if (realDamage > 70) "solid" else "light"
+                if (realDamage > 5) {
+                    val dmgType = if (damage.type == DamageType.ENERGY) "energy" else "gun"
+                    val type = if (realDamage > 200) "heavy" else if (realDamage > 70) "solid" else "light"
 
-                Global.getSoundPlayer().playSound(
-                    "hit_shield_${type}_${dmgType}",
-                    1.5f,
-                    1f,
-                    realLoc,
-                    Misc.ZERO
-                )
+                    Global.getSoundPlayer().playSound(
+                        "hit_shield_${type}_${dmgType}",
+                        1.5f,
+                        1f,
+                        realLoc,
+                        Misc.ZERO
+                    )
+                }
             }
 
             fun createHitRipple(location: Vector2f, velocity: Vector2f, dmg: Float, direction: Float,
@@ -548,6 +562,36 @@ class TS_triadShields: BaseShipSystemScript(), DamageTakenModifier {
 
             source?.setCustomData("TS_triadShieldsNOCHECK", true)
             source?.let { Global.getCombatEngine().removeEntity(it) }
+
+            if (propagate && !damage.isDps) {
+                damage.damage -= diff / damageTypeMult
+                if (broken() && damage.damage > 0f && diff > 1f) {
+                    propogateRemainingDamage(damage, source)
+                }
+            }
+        }
+
+        private fun propogateRemainingDamage(
+            damage: DamageAPI,
+            source: DamagingProjectileAPI?
+        ) {
+            var targets = HashSet<ShieldPiece>()
+
+            for (entry in system.visuals!!.piecesMap) {
+                if (entry.value == this) continue
+                if (entry.key.first !in (coords.first - 1..coords.first + 1)) continue
+                if (entry.key.second !in (coords.second - 1..coords.second + 1)) continue
+
+                if (entry.value.isUseless()) continue
+
+                targets += entry.value
+            }
+
+            val damageLeft = damage.clone()
+            damageLeft.damage = damageLeft.damage / targets.size
+            for (piece in targets) {
+                piece.takeDamage(damageLeft, source) // can cause recursion
+            }
         }
 
         private fun repositionDrone() {
@@ -692,10 +736,28 @@ class TS_triadShields: BaseShipSystemScript(), DamageTakenModifier {
 
     class TriadShieldVisuals(var ship: ShipAPI, var script: TS_triadShields): BaseCombatLayeredRenderingPlugin() {
         var pieces: MutableList<ShieldPiece> = ArrayList<ShieldPiece>()
+        var piecesMap = HashMap<Pair<Int, Int>, ShieldPiece>()
         var connections: MutableList<ShieldPieceConnection> = ArrayList<ShieldPieceConnection>()
 
         init {
             addShieldPieces()
+        }
+
+        fun getGridH(): Int {
+            var gridHeight = (ship.collisionRadius / SIDE_LENGTH).toInt() * 2
+
+            if (gridHeight / 2 != 0) gridHeight++
+            if (gridHeight < 6) gridHeight = 6
+
+            return gridHeight
+        }
+        fun getGridW(): Int {
+            var gridWidth = (ship.collisionRadius / getGridH()).toInt() * 2
+
+            if (gridWidth / 2 != 0) gridWidth++
+            if (gridWidth < 6) gridWidth = 6
+
+            return gridWidth
         }
 
         fun addShieldPieces() {
@@ -703,34 +765,30 @@ class TS_triadShields: BaseShipSystemScript(), DamageTakenModifier {
             SIDE_LENGTH = 20f
 
             pieces.clear()
-            //SIDE_LENGTH = 10f;
-            //SIDE_LENGTH = 120f;
+            piecesMap.clear()
             val side: Float = SIDE_LENGTH
             val height = (side * sqrt(3.0) / 2f).toFloat()
             val centerFromBottom = (sin(Math.toRadians(30.0)) * height).toFloat()
-            //centerFromBottom = side/2f;
-            var gridHeight = (ship.collisionRadius / side).toInt() * 2
-            if (gridHeight / 2 != 0) gridHeight++
-            if (gridHeight < 6) gridHeight = 6
-            var gridWidth = (ship.collisionRadius / height).toInt() * 2
-            if (gridWidth / 2 != 0) gridWidth++
-            if (gridWidth < 6) gridWidth = 6
+            var gridHeight = getGridH()
+            var gridWidth = getGridW()
             for (i in -gridWidth / 2..<gridWidth / 2) {
                 for (j in -gridHeight / 2..<gridHeight / 2) {
 
                     val lowX = i * height + height / 2f
                     val highX = (i + 1) * height + height / 2f
                     var centerY = j * side + side / 2f
-                    var piece = ShieldPiece(ship, script,true, lowX + centerFromBottom, centerY, side - 2f)
+                    var piece = ShieldPiece(ship, script,true, lowX + centerFromBottom, centerY, side - 2f, Pair(i, j))
                     if (piece.baseAlphaMult > 0) {
                         pieces.add(piece)
+                        piecesMap[Pair(i, j)] = piece
                     }
 
                     if (j != gridHeight / 2 - 1) {
                         centerY += side / 2f
-                        piece = ShieldPiece(ship, script,false, highX - centerFromBottom, centerY, side - 2f)
+                        piece = ShieldPiece(ship, script,false, highX - centerFromBottom, centerY, side - 2f, Pair(i, j))
                         if (piece.baseAlphaMult > 0) {
                             pieces.add(piece)
+                            piecesMap[Pair(i, j)] = piece
                         }
                     }
                 }
@@ -916,7 +974,7 @@ class TS_triadShields: BaseShipSystemScript(), DamageTakenModifier {
         if (shieldHit) return null
         if (param is DamagingExplosion) return blockExplosion(param, point, damage)
         if (param is BeamAPI) return blockBeam(param, point, damage)
-        if (param is EmpArcEntityAPI) return blockArc(param,  param.location, point, damage)
+        if (param is EmpArcEntityAPI) return blockArc(param,  param.targetLocation, ReflectionUtilsTwo.get("origPoint", param) as? Vector2f ?: param.location, damage)
         if (param == "EMP_SHIP_SYSTEM_PARAM") return blockArc(null, damage.stats.entity.location, point, damage)
 
         return null
@@ -924,6 +982,10 @@ class TS_triadShields: BaseShipSystemScript(), DamageTakenModifier {
 
     private fun getBlockersInDirection(point: Vector2f, dir: Vector2f): MutableSet<ShieldPiece> {
         val blockers = HashSet<ShieldPiece>()
+
+        if (dir.isZeroVector()) {
+            return blockers
+        }
 
         val visuals = visuals ?: return blockers
         var point = Vector2f(point)
@@ -938,12 +1000,12 @@ class TS_triadShields: BaseShipSystemScript(), DamageTakenModifier {
 
             blockers += newBlockers
 
-            point = (point.translate(dir.x, dir.y))
+            point = (point.translate(dir.x * 8f, dir.y * 8f))
 
             /*Global.getCombatEngine().addHitParticle(
                 point,
                 Misc.ZERO,
-                25f,
+                10f,
                 0.4f,
                 0.2f,
                 Color.GREEN
@@ -964,8 +1026,8 @@ class TS_triadShields: BaseShipSystemScript(), DamageTakenModifier {
         if (blockers.isEmpty()) return null
 
         for (cell in blockers) {
-            damage.modifier.modifyMult("TS_triadShieldsCell", 0.5f / blockers.size)
-            cell.takeDamage(damage)
+            damage.modifier.modifyMult("TS_triadShieldsCell", 1f / blockers.size)
+            cell.takeDamage(damage, propagate = false)
             damage.modifier.unmodify("TS_triadShieldsCell")
         }
 
@@ -1007,7 +1069,7 @@ class TS_triadShields: BaseShipSystemScript(), DamageTakenModifier {
             }
 
             damage.modifier.modifyMult("TS_triadShieldsExplosionResist", EXPLOSION_DAMAGE_TAKEN_MULT)
-            piece.takeDamage(damage)
+            piece.takeDamage(damage, propagate = false)
             damage.modifier.unmodify("TS_triadShieldsExplosionResist")
             damage.damage = oldDmg
         }
@@ -1034,7 +1096,7 @@ class TS_triadShields: BaseShipSystemScript(), DamageTakenModifier {
 
         for (piece in blockers) {
             damage.modifier?.modifyMult("TS_triadBlockedShield", 1 - BEAM_DAMAGE_TAKEN_MULT)
-            piece.takeDamage(damage)
+            piece.takeDamage(damage, propagate = false)
             damage.modifier?.unmodify("TS_triadBlockedShield")
 
             blocked = true
