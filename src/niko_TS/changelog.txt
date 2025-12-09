@@ -4,7 +4,11 @@ EMP Arcs are now blocked
 Movingrays now have correct collision for real
 Phase now pauses regen
 
+Added limited punchthrough
+    If an attack breakas a shield node, the remainder of its damage is spread across adjacent cells
+
 Massively reduced raycast overhead
+Reduced collision overhead
 
 1.1.0
 NOT SAVE COMPATIBLE lol sorry

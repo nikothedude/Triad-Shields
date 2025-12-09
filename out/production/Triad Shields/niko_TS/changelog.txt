@@ -4,6 +4,8 @@ EMP Arcs are now blocked
 Movingrays now have correct collision for real
 Phase now pauses regen
 
+Massively reduced raycast overhead
+
 1.1.0
 NOT SAVE COMPATIBLE lol sorry
 

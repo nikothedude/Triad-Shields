@@ -371,10 +371,12 @@ class TS_triadShields: BaseShipSystemScript(), DamageTakenModifier {
             if (getShieldStrength() > 0f && !ship.isPhased) {
                 val length = SHIELD_RADIUS
                 var realLoc = getRealLoc()
-                val objs = engine.projectiles.filter { (MathUtils.getDistance(realLoc, it.location) - it.collisionRadius) <= length }.iterator()
+                val objs = engine.allObjectGrid.getCheckIterator(realLoc, SHIELD_RADIUS * 1.5f, SHIELD_RADIUS * 1.5f)
+                //val objs = engine.projectiles.filter { (MathUtils.getDistance(realLoc, it.location) - it.collisionRadius) <= length }.iterator()
                 while (objs.hasNext()) {
                     val check = objs.next()
                     if (check is DamagingProjectileAPI) {
+                        if ((MathUtils.getDistance(realLoc, check.location) - check.collisionRadius) > length) continue
                         if (check.source == ship) continue
                         if (check.customData["TS_triadShieldsNOCHECK"] == true) continue
 
@@ -577,7 +579,7 @@ class TS_triadShields: BaseShipSystemScript(), DamageTakenModifier {
         ) {
             var targets = HashSet<ShieldPiece>()
 
-            for (entry in system.visuals!!.piecesMap) {
+            for (entry in system.core!!.piecesMap) {
                 if (entry.value == this) continue
                 if (entry.key.first !in (coords.first - 1..coords.first + 1)) continue
                 if (entry.key.second !in (coords.second - 1..coords.second + 1)) continue
@@ -734,13 +736,14 @@ class TS_triadShields: BaseShipSystemScript(), DamageTakenModifier {
         }
     }
 
-    class TriadShieldVisuals(var ship: ShipAPI, var script: TS_triadShields): BaseCombatLayeredRenderingPlugin() {
+    class TriadShieldCore(var ship: ShipAPI, var script: TS_triadShields): BaseCombatLayeredRenderingPlugin() {
         var pieces: MutableList<ShieldPiece> = ArrayList<ShieldPiece>()
         var piecesMap = HashMap<Pair<Int, Int>, ShieldPiece>()
         var connections: MutableList<ShieldPieceConnection> = ArrayList<ShieldPieceConnection>()
 
         init {
             addShieldPieces()
+            Global.getCombatEngine().addLayeredRenderingPlugin(this)
         }
 
         fun getGridH(): Int {
@@ -896,7 +899,7 @@ class TS_triadShields: BaseShipSystemScript(), DamageTakenModifier {
         }
     }
 
-    protected var visuals: TriadShieldVisuals? = null
+    protected var core: TriadShieldCore? = null
     var effectLevel = 1f
 
     override fun apply(
@@ -922,10 +925,8 @@ class TS_triadShields: BaseShipSystemScript(), DamageTakenModifier {
             ship.addListener(this)
         }
 
-        if (visuals == null) {
-            visuals = TriadShieldVisuals(ship, this)
-            Global.getCombatEngine().addLayeredRenderingPlugin(visuals)
-            ship.addListener(this)
+        if (core == null) {
+            core = TriadShieldCore(ship, this)
         }
 
         if (Global.getCombatEngine().isPaused) {
@@ -987,7 +988,7 @@ class TS_triadShields: BaseShipSystemScript(), DamageTakenModifier {
             return blockers
         }
 
-        val visuals = visuals ?: return blockers
+        val visuals = core ?: return blockers
         var point = Vector2f(point)
 
         var fails = 0f
@@ -1041,7 +1042,7 @@ class TS_triadShields: BaseShipSystemScript(), DamageTakenModifier {
         damage: DamageAPI
     ): String? {
 
-        val visuals = visuals ?: return null
+        val visuals = core ?: return null
         val oldDmg = damage.baseDamage
 
         var blocked = getBlockersInDirection(point, VectorUtils.getDirectionalVector(point, visuals.ship.location)).isNotEmpty()
@@ -1088,7 +1089,7 @@ class TS_triadShields: BaseShipSystemScript(), DamageTakenModifier {
     ): String? {
 
         var blocked = false
-        val visuals = visuals ?: return null
+        val visuals = core ?: return null
         val to = beam.to
         val origDamage = damage.damage
 
@@ -1114,7 +1115,7 @@ class TS_triadShields: BaseShipSystemScript(), DamageTakenModifier {
 
     fun approximateShieldStrength(): Float {
         var base = 0f
-        val visuals = visuals ?: return 0f
+        val visuals = core ?: return 0f
         for (piece in visuals.pieces) {
             if (piece.isUseless()) {
                 continue
