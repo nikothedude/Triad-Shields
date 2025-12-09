@@ -1,4 +1,5 @@
 1.2.0
+SAVE COMPATIBLE
 
 EMP Arcs are now blocked
 Movingrays now have correct collision for real
@@ -9,6 +10,9 @@ Added limited punchthrough
 
 Massively reduced raycast overhead
 Reduced collision overhead
+
+Refactored triad shields a bit
+Shields now prevent triad shield collision
 
 1.1.0
 NOT SAVE COMPATIBLE lol sorry

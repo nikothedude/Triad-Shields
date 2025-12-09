@@ -35,7 +35,7 @@ import kotlin.math.*
 class TS_triadShields: BaseShipSystemScript(), DamageTakenModifier {
 
     companion object {
-        var SIDE_LENGTH: Float = 20f
+        const val SIDE_LENGTH: Float = 20f
         val DAMAGE_COLOR = Color.RED
         val BASE_COLOR = Color(100, 165, 255, 255)
         val FLOATY_COLOR = Color(100, 100, 255, 220)
@@ -50,6 +50,9 @@ class TS_triadShields: BaseShipSystemScript(), DamageTakenModifier {
         const val SHIELD_BREAK_DURATION_DAMAGE_DIVISOR = 250f
 
         const val RAYCAST_FAIL_TIMES_TIL_END = 25
+        const val RAYCAST_STEP_MULT = 8f
+
+        const val LOW_INTEGRITY_PERCENT = 0.4f
 
         val sizesToStrength = hashMapOf<ShipAPI.HullSize, Float>(
             Pair(ShipAPI.HullSize.FIGHTER, 20f),
@@ -103,7 +106,7 @@ class TS_triadShields: BaseShipSystemScript(), DamageTakenModifier {
         }
     }
 
-    class ShieldPiece(var ship: ShipAPI, val system: TS_triadShields, upsideDown: Boolean, x: Float, y: Float, var side: Float, val coords: Pair<Int, Int>) {
+    class ShieldPiece(var ship: ShipAPI, val system: TS_triadShields, val upsideDown: Boolean, x: Float, y: Float, var side: Float, val coords: Pair<Int, Int>) {
         val interval = IntervalUtil(1f, 1f)
 
         var offset: Vector2f = Vector2f()
@@ -112,7 +115,6 @@ class TS_triadShields: BaseShipSystemScript(), DamageTakenModifier {
         var vel: Vector2f = Vector2f()
 
         var sprite: SpriteAPI
-        var upsideDown: Boolean = false
 
         var p1: Vector2f? = null
         var p2: Vector2f? = null
@@ -124,7 +126,6 @@ class TS_triadShields: BaseShipSystemScript(), DamageTakenModifier {
 
         var fader: FaderUtil
         var flicker: FlickerUtilV2?
-        var forceAdvance = false
 
         var maxHealth = sizesToStrength[ship.hullSize] ?: 100f
         var health = maxHealth
@@ -139,9 +140,7 @@ class TS_triadShields: BaseShipSystemScript(), DamageTakenModifier {
         var drone: ShipAPI? = null // only used for returning damage apply results
 
         init {
-
             offset.set(x, y)
-            this.upsideDown = upsideDown
 
             fader = FaderUtil(0f, 0.25f, 0.25f)
             fader.brightness = Math.random().toFloat() * 1f
@@ -150,9 +149,7 @@ class TS_triadShields: BaseShipSystemScript(), DamageTakenModifier {
 
             flicker = FlickerUtilV2()
 
-
             sprite = Global.getSettings().getSprite("graphics/hud/line8x8.png")
-
 
             // updside down means the flat side is on the left
             // p1 is always the lone point, p2->p3 the flat side on the left/right
@@ -173,9 +170,6 @@ class TS_triadShields: BaseShipSystemScript(), DamageTakenModifier {
             if (!isUseless()) {
                 drone = Global.getCombatEngine().createFXDrone(Global.getSettings().getVariant("TS_triadDrone_shield"))
                 val notNullDrone = drone!!
-                //drone = fleetManager.spawnShipOrWing("TS_triadDrone_shield", Vector2f(999999f, 999999f), 0f)
-                //drone.addTag(Tags.VARIANT_FX_DRONE)
-                //ReflectionUtilsTwo.set("id", drone, "")
                 notNullDrone.setShield(ShieldAPI.ShieldType.OMNI, 0f, 1f, 360f)
                 notNullDrone.collisionClass = CollisionClass.FIGHTER
                 notNullDrone.shipAI = null
@@ -183,6 +177,7 @@ class TS_triadShields: BaseShipSystemScript(), DamageTakenModifier {
                 notNullDrone.location.set(999999f, 999999f)
                 notNullDrone.collisionRadius = SHIELD_RADIUS * 1.1f
                 notNullDrone.shield.radius = SHIELD_RADIUS
+                notNullDrone.variant.removeTag(Tags.VARIANT_FX_DRONE)
                 ship.isAlly = ship.isAlly
                 ship.isHoldFire = true
 
@@ -210,7 +205,7 @@ class TS_triadShields: BaseShipSystemScript(), DamageTakenModifier {
             var loc = loc
             val realLoc = getRealLoc()
 
-            if (offline()) return false
+            if (isOffline()) return false
 
             if (entity is DamagingExplosion) {
                 val radius = entity.explosionSpecIfExplosion.radius
@@ -220,10 +215,13 @@ class TS_triadShields: BaseShipSystemScript(), DamageTakenModifier {
                 }
             }
 
-            if (entity?.tailEnd != null && entity is MovingRay) {
-                // todo fix
+            val shield = ship.shield
+            if (shield != null) {
+                if (shield.isWithinArc(loc)) return false
+            }
 
-                //val rayDist = (MathUtils.getDistance(entity.tailEnd, loc)) / 4f
+            if (entity?.tailEnd != null && entity is MovingRay) {
+
                 loc = MathUtils.getPointOnCircumference(entity.location, entity.collisionRadius / 4f, Misc.normalizeAngle(entity.facing))
                 /*Global.getCombatEngine().addHitParticle(
                     loc,
@@ -234,8 +232,6 @@ class TS_triadShields: BaseShipSystemScript(), DamageTakenModifier {
                     Color.GREEN
                 )*/
             }
-            //val checkLoc = MathUtils.getPointOnCircumference(check.location, check.collisionRadius, VectorUtils.getAngle(check.location, realLoc))
-            //if (!CollisionUtils.isPointWithinCollisionCircle(checkLoc, drone)) continue
             val realP1 = Vector2f(ship.location).translate(p1!!.x, p1!!.y).rotateAroundPivot(ship.location, ship.facing)
             val realP2 = Vector2f(ship.location).translate(p2!!.x, p2!!.y).rotateAroundPivot(ship.location, ship.facing)
             val realP3 = Vector2f(ship.location).translate(p3!!.x, p3!!.y).rotateAroundPivot(ship.location, ship.facing)
@@ -299,7 +295,6 @@ class TS_triadShields: BaseShipSystemScript(), DamageTakenModifier {
         }
 
         fun updatePointAlpha() {
-            //if (true) return;
             val bounds = ship.exactBounds
             bounds.update(Vector2f(0f, 0f), 0f)
             p1Alpha = getPointAlpha(p1!!)
@@ -341,16 +336,7 @@ class TS_triadShields: BaseShipSystemScript(), DamageTakenModifier {
         val adjustedOffset: Vector2f
             get() = Vector2f.add(offset, off, Vector2f())
 
-        val center: Vector2f
-            get() {
-                val result = Vector2f(offset)
-                Misc.rotateAroundOrigin(result, ship.facing)
-                Vector2f.add(ship.location, result, result)
-                return result
-            }
-
         fun advance(amount: Float) {
-
             fader.advance(amount * (0.5f + 0.5f * Math.random().toFloat()))
             if (drone == null) return
             val notNullDrone = drone!!
@@ -413,13 +399,13 @@ class TS_triadShields: BaseShipSystemScript(), DamageTakenModifier {
 
         private fun regen(amount: Float) {
             if (ship.isPhased) return
-            if (broken()) {
+            if (isBroken()) {
                 downtime -= amount
                 downtime = downtime.coerceAtLeast(0f)
                 return
             }
             var base = diss
-            if (offline() && !isSmod()) {
+            if (isOffline() && !isSmod()) {
                 base *= OFFLINE_REGEN_MULT
             }
 
@@ -470,6 +456,7 @@ class TS_triadShields: BaseShipSystemScript(), DamageTakenModifier {
                     Misc.ZERO
                 )
             } else {
+                // the same magic numbers used in Misc.playSound()
                 if (realDamage > 5) {
                     val dmgType = if (damage.type == DamageType.ENERGY) "energy" else "gun"
                     val type = if (realDamage > 200) "heavy" else if (realDamage > 70) "solid" else "light"
@@ -484,35 +471,14 @@ class TS_triadShields: BaseShipSystemScript(), DamageTakenModifier {
                 }
             }
 
-            fun createHitRipple(location: Vector2f, velocity: Vector2f, dmg: Float, direction: Float,
-                                shieldRadius: Float, dweller: Boolean) {
+            // copied from graphicslib
+            fun createHitRipple(location: Vector2f, velocity: Vector2f, dmg: Float, dweller: Boolean) {
                 if (dmg < 25f) {
                     return
                 }
 
                 var fadeTime = dmg.toDouble().pow(0.25).toFloat() * 0.1f
                 var size = dmg.toDouble().pow(0.3333333).toFloat() * 15f
-
-                val ratio = min(size / shieldRadius, 1f)
-                val arc = 90f - ratio * 14.54136f // Don't question the magic number
-
-                var start1: Float = direction - arc
-                if (start1 < 0f) {
-                    start1 += 360f
-                }
-                var end1: Float = direction + arc
-                if (end1 >= 360f) {
-                    end1 -= 360f
-                }
-
-                var start2: Float = direction + arc
-                if (start2 < 0f) {
-                    start2 += 360f
-                }
-                var end2: Float = direction - arc
-                if (end2 >= 360f) {
-                    end2 -= 360f
-                }
 
                 if (dweller) {
                     fadeTime *= 1.5f
@@ -525,7 +491,6 @@ class TS_triadShields: BaseShipSystemScript(), DamageTakenModifier {
                     ripple.fadeInSize(fadeTime * 1.2f)
                     ripple.fadeOutIntensity(fadeTime)
                     ripple.setSize(size * 0.2f)
-                    //ripple.setArc(start1, end1)
                     DistortionShader.addDistortion(ripple)
                 } else {
                     var ripple = RippleDistortion(location, velocity)
@@ -535,7 +500,6 @@ class TS_triadShields: BaseShipSystemScript(), DamageTakenModifier {
                     ripple.fadeInSize(fadeTime * 1.2f)
                     ripple.fadeOutIntensity(fadeTime)
                     ripple.setSize(size * 0.2f)
-                    //ripple.setArc(start1, end1)
                     DistortionShader.addDistortion(ripple)
 
                     ripple = RippleDistortion(location, velocity)
@@ -545,14 +509,12 @@ class TS_triadShields: BaseShipSystemScript(), DamageTakenModifier {
                     ripple.fadeInSize(fadeTime * 1.2f)
                     ripple.fadeOutIntensity(fadeTime)
                     ripple.setSize(size * 0.2f)
-                    //ripple.setArc(start2, end2)
                     DistortionShader.addDistortion(ripple)
                 }
             }
 
-            val angle = source?.let { VectorUtils.getFacing(VectorUtils.getDirectionalVector(ship.location, it.location)) } ?: 0f
             if (TS_modPlugin.graphicsLibEnabled) {
-                createHitRipple(realLoc, ship.velocity, realDamage * 0.5f, angle, SIDE_LENGTH, false)
+                createHitRipple(realLoc, ship.velocity, realDamage * 0.5f, false)
             }
             Global.getCombatEngine().addFloatingDamageText(
                 realLoc,
@@ -567,7 +529,7 @@ class TS_triadShields: BaseShipSystemScript(), DamageTakenModifier {
 
             if (propagate && !damage.isDps) {
                 damage.damage -= diff / damageTypeMult
-                if (broken() && damage.damage > 0f && diff > 1f) {
+                if (isOffline() && damage.damage > 0f && diff > 1f) {
                     propogateRemainingDamage(damage, source)
                 }
             }
@@ -592,14 +554,12 @@ class TS_triadShields: BaseShipSystemScript(), DamageTakenModifier {
             val damageLeft = damage.clone()
             damageLeft.damage = damageLeft.damage / targets.size
             for (piece in targets) {
-                piece.takeDamage(damageLeft, source) // can cause recursion
+                piece.takeDamage(damageLeft, null) // can cause recursion
             }
         }
 
         private fun repositionDrone() {
             drone?.location?.set(getRealLoc())
-            drone?.variant?.removeTag(Tags.VARIANT_FX_DRONE)
-            forceAdvance = true
         }
 
         fun getRealLoc(): Vector2f {
@@ -610,16 +570,16 @@ class TS_triadShields: BaseShipSystemScript(), DamageTakenModifier {
             return (health / maxHealth)
         }
 
-        fun offline(): Boolean {
-            return (broken() || system.effectLevel < 0.1f)
+        fun isOffline(): Boolean {
+            return (isBroken() || system.effectLevel < 0.1f)
         }
 
-        fun broken(): Boolean {
+        fun isBroken(): Boolean {
             return !ship.isAlive || downtime > 0f
         }
 
         fun adjustHealth(amount: Float) {
-            if (broken()) return // sorry cant regen
+            if (isBroken()) return // sorry cant regen
             health += amount
             health = health.coerceAtMost(maxHealth)
             if (health <= 0f) {
@@ -640,7 +600,7 @@ class TS_triadShields: BaseShipSystemScript(), DamageTakenModifier {
          */
         fun render(alphaMult: Float) {
 
-            if (isUseless() || offline()) return
+            if (isUseless() || isOffline()) return
 
             var alphaMult = alphaMult
             var color = BASE_COLOR
@@ -754,6 +714,7 @@ class TS_triadShields: BaseShipSystemScript(), DamageTakenModifier {
 
             return gridHeight
         }
+
         fun getGridW(): Int {
             var gridWidth = (ship.collisionRadius / getGridH()).toInt() * 2
 
@@ -765,7 +726,7 @@ class TS_triadShields: BaseShipSystemScript(), DamageTakenModifier {
 
         fun addShieldPieces() {
 
-            SIDE_LENGTH = 20f
+            // NIKO NOTE: i dont understand anything in this function
 
             pieces.clear()
             piecesMap.clear()
@@ -799,9 +760,9 @@ class TS_triadShields: BaseShipSystemScript(), DamageTakenModifier {
 
             val maxDist: Float = SIDE_LENGTH * 1.2f
             for (i in 0..<pieces.size - 1) {
-                val curr = pieces.get(i)
+                val curr = pieces[i]
                 for (j in i + 1..<pieces.size) {
-                    val other = pieces.get(j)
+                    val other = pieces[j]
                     if (curr === other) continue
                     if (Misc.getDistance(curr.offset, other.offset) > maxDist) continue
 
@@ -811,8 +772,10 @@ class TS_triadShields: BaseShipSystemScript(), DamageTakenModifier {
             }
         }
 
+        //fun getPiecesCopy(): MutableList<ShieldPiece> = piecesMap.values.toMutableList()
+
         override fun getActiveLayers(): EnumSet<CombatEngineLayers?> {
-            return EnumSet.of<CombatEngineLayers?>(CombatEngineLayers.ABOVE_SHIPS_AND_MISSILES_LAYER)
+            return EnumSet.of(CombatEngineLayers.ABOVE_SHIPS_AND_MISSILES_LAYER)
         }
 
         override fun isExpired(): Boolean {
@@ -831,7 +794,7 @@ class TS_triadShields: BaseShipSystemScript(), DamageTakenModifier {
             if (Global.getCombatEngine().playerShip == ship) {
                 val strength = script.approximateShieldStrength()
                 val amount = "${(strength * 100f).toInt()}%"
-                val warn = (strength < 0.4f)
+                val warn = (strength <= LOW_INTEGRITY_PERCENT)
                 val warnString = if (warn) " (LOW INTEGRITY)" else ""
 
                 Global.getCombatEngine().maintainStatusForPlayerShip(
@@ -911,11 +874,9 @@ class TS_triadShields: BaseShipSystemScript(), DamageTakenModifier {
         this.effectLevel = effectLevel
 
         var id = id
-        var ship: ShipAPI? = null
-        var player = false
+        var ship: ShipAPI?
         if (stats.entity is ShipAPI) {
             ship = stats.entity as ShipAPI?
-            player = ship == Global.getCombatEngine().playerShip
             id = id + "_" + ship!!.id
         } else {
             return
@@ -939,18 +900,8 @@ class TS_triadShields: BaseShipSystemScript(), DamageTakenModifier {
         }
     }
 
-
     override fun unapply(stats: MutableShipStatsAPI, id: String?) {
-        var id = id
-        var ship: ShipAPI? = null
-        var player = false
-        if (stats.entity is ShipAPI) {
-            ship = stats.entity as ShipAPI?
-            player = ship === Global.getCombatEngine().playerShip
-            id = id + "_" + ship!!.id
-        } else {
-            return
-        }
+        return
     }
 
     override fun getStatusData(index: Int, state: ShipSystemStatsScript.State?, effectLevel: Float): StatusData? {
@@ -958,7 +909,7 @@ class TS_triadShields: BaseShipSystemScript(), DamageTakenModifier {
         val amount = "${(strength * 100f).toInt()}%"
         val data = StatusData("Shield Strength: $amount", strength <= 0.4f)
         return data*/
-        // inconsistant. we do it in advance
+        // inconsistant. we do it in advance of the core
         return null
     }
 
@@ -1001,7 +952,7 @@ class TS_triadShields: BaseShipSystemScript(), DamageTakenModifier {
 
             blockers += newBlockers
 
-            point = (point.translate(dir.x * 8f, dir.y * 8f))
+            point = (point.translate(dir.x * RAYCAST_STEP_MULT, dir.y * RAYCAST_STEP_MULT))
 
             /*Global.getCombatEngine().addHitParticle(
                 point,
@@ -1037,7 +988,7 @@ class TS_triadShields: BaseShipSystemScript(), DamageTakenModifier {
     }
 
     private fun blockExplosion(
-        exploson: DamagingExplosion,
+        explosion: DamagingExplosion,
         point: Vector2f,
         damage: DamageAPI
     ): String? {
@@ -1051,10 +1002,10 @@ class TS_triadShields: BaseShipSystemScript(), DamageTakenModifier {
             //if (!piece.checkCollision(point, exploson)) continue
 
             val loc = piece.getRealLoc()
-            val rad = exploson.explosionSpecIfExplosion.radius
-            val core = exploson.explosionSpecIfExplosion.coreRadius
-            val maxDmg = exploson.explosionSpecIfExplosion.maxDamage
-            val minDmg = exploson.explosionSpecIfExplosion.minDamage
+            val rad = explosion.explosionSpecIfExplosion.radius
+            val core = explosion.explosionSpecIfExplosion.coreRadius
+            val maxDmg = explosion.explosionSpecIfExplosion.maxDamage
+            val minDmg = explosion.explosionSpecIfExplosion.minDamage
 
             var dist = MathUtils.getDistance(loc, point)
             if (dist > rad) continue
@@ -1089,9 +1040,6 @@ class TS_triadShields: BaseShipSystemScript(), DamageTakenModifier {
     ): String? {
 
         var blocked = false
-        val visuals = core ?: return null
-        val to = beam.to
-        val origDamage = damage.damage
 
         val blockers = getBlockersInDirection(point, VectorUtils.getDirectionalVector(point, beam.source.location))
 
