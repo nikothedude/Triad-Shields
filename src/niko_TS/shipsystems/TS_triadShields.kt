@@ -94,7 +94,6 @@ class TS_triadShields: BaseShipSystemScript(), DamageTakenModifier {
             dir.negate()
             Vector2f.add(to.vel, dir, to.vel)
 
-
             val maxOff = 20f
             from.off.x += from.vel.x * amount
             from.off.y += from.vel.y * amount
@@ -542,7 +541,7 @@ class TS_triadShields: BaseShipSystemScript(), DamageTakenModifier {
 
             for (entry in system.core!!.piecesMap) {
                 if (entry.value == this) continue
-                if (entry.key.first !in (coords.first - 1..coords.first + 1)) continue
+                if (entry.key.first !in (coords.first - 1 ..coords.first + 1)) continue
                 if (entry.key.second !in (coords.second - 1..coords.second + 1)) continue
 
                 if (entry.value.isUseless()) continue
@@ -554,6 +553,18 @@ class TS_triadShields: BaseShipSystemScript(), DamageTakenModifier {
             damageLeft.damage = damageLeft.damage / targets.size
             for (piece in targets) {
                 piece.takeDamage(damageLeft, null) // can cause recursion
+
+                /*if (Global.getSettings().isDevMode) {
+                    Global.getCombatEngine().addFloatingText(
+                        piece.getRealLoc(),
+                        "a",
+                        5f,
+                        Color.WHITE,
+                        ship,
+                        0f,
+                        0f
+                    )
+                }*/
             }
         }
 
@@ -706,21 +717,21 @@ class TS_triadShields: BaseShipSystemScript(), DamageTakenModifier {
         }
 
         fun getGridH(): Int {
-            var gridHeight = (ship.collisionRadius / SIDE_LENGTH).toInt() * 2
+            var gridHeight = (ship.collisionRadius / SIDE_LENGTH) * 2.5f
 
-            if (gridHeight / 2 != 0) gridHeight++
-            if (gridHeight < 6) gridHeight = 6
+            if (gridHeight / 2 != 0f) gridHeight++
+            if (gridHeight < 6) gridHeight = 6f
 
-            return gridHeight
+            return gridHeight.toInt()
         }
 
         fun getGridW(): Int {
-            var gridWidth = (ship.collisionRadius / getGridH()).toInt() * 2
+            var gridWidth = (ship.collisionRadius / SIDE_LENGTH) * 2.5f
 
-            if (gridWidth / 2 != 0) gridWidth++
-            if (gridWidth < 6) gridWidth = 6
+            if (gridWidth / 2 != 0f) gridWidth++
+            if (gridWidth < 6) gridWidth = 6f
 
-            return gridWidth
+            return gridWidth.toInt()
         }
 
         fun addShieldPieces() {
@@ -746,12 +757,36 @@ class TS_triadShields: BaseShipSystemScript(), DamageTakenModifier {
                         piecesMap[Pair(i, j)] = piece
                     }
 
+                    if (Global.getSettings().isDevMode) {
+                        Global.getCombatEngine().addFloatingText(
+                            piece.getRealLoc(),
+                            "a",
+                            5f,
+                            Color.WHITE,
+                            ship,
+                            0f,
+                            0f
+                        )
+                    }
+
                     if (j != gridHeight / 2 - 1) {
                         centerY += side / 2f
                         piece = ShieldPiece(ship, script,false, highX - centerFromBottom, centerY, side - 2f, Pair(i, j))
                         if (piece.baseAlphaMult > 0) {
                             pieces.add(piece)
                             piecesMap[Pair(i, j)] = piece
+                        }
+
+                        if (Global.getSettings().isDevMode) {
+                            Global.getCombatEngine().addFloatingText(
+                                piece.getRealLoc(),
+                                "a",
+                                5f,
+                                Color.WHITE,
+                                ship,
+                                0f,
+                                0f
+                            )
                         }
                     }
                 }

@@ -1,3 +1,9 @@
+1.2.1
+SAVE COMPATIBLE
+
+Fixes large ships not having total shield coverage
+Fixes AI ships holding fire with triad shields
+
 1.2.0
 SAVE COMPATIBLE
 
