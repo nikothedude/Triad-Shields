@@ -178,8 +178,7 @@ class TS_triadShields: BaseShipSystemScript(), DamageTakenModifier {
                 notNullDrone.collisionRadius = SHIELD_RADIUS * 1.1f
                 notNullDrone.shield.radius = SHIELD_RADIUS
                 notNullDrone.variant.removeTag(Tags.VARIANT_FX_DRONE)
-                ship.isAlly = ship.isAlly
-                ship.isHoldFire = true
+                notNullDrone.isAlly = ship.isAlly
 
                 notNullDrone.mutableStats.fluxCapacity.modifyFlat("TS_triadShield_${this}", 9999999f)
                 notNullDrone.mutableStats.fluxDissipation.modifyFlat("TS_triadShield_${this}", 9999999f)
