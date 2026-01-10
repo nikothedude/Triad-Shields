@@ -1,2 +1,2 @@
 name,id,tier,rarity,tech/manufacturer,tags,uiTags,base value,unlocked,hidden,hiddenEverywhere,cost_frigate,cost_dest,cost_cruiser,cost_capital,script,desc,short,sModDesc,sprite
-Triad Shields,TS_triadShieldsHullmod,,,Unknown,"restricted, shields, no_drop",Shields,125000,,,,10,20,30,40,niko_TS.hullmods.TS_triadShieldsHmod,<created inscript>,,,graphics/hullmods/TS_triadShieldsHmod.png
+Triad Shields,TS_triadShieldsHullmod,,,Unknown,"restricted, shields, no_drop",Shields,125000,,,,15,30,45,60,niko_TS.hullmods.TS_triadShieldsHmod,<created inscript>,,,graphics/hullmods/TS_triadShieldsHmod.png

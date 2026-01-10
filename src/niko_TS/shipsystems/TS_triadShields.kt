@@ -48,6 +48,7 @@ class TS_triadShields: BaseShipSystemScript(), DamageTakenModifier {
 
         const val BASE_SHIELD_DOWNTIME = 5f
         const val SHIELD_BREAK_DURATION_DAMAGE_DIVISOR = 250f
+        const val MAX_DOWNTIME = 20f
 
         const val RAYCAST_FAIL_TIMES_TIL_END = 25
         const val RAYCAST_STEP_MULT = 8f
@@ -352,7 +353,7 @@ class TS_triadShields: BaseShipSystemScript(), DamageTakenModifier {
 
             val engine = Global.getCombatEngine()
 
-            if (getShieldStrength() > 0f && !ship.isPhased) {
+            if (!ship.isPhased) {
                 val length = SHIELD_RADIUS
                 var realLoc = getRealLoc()
                 val objs = engine.allObjectGrid.getCheckIterator(realLoc, SHIELD_RADIUS * 1.5f, SHIELD_RADIUS * 1.5f)
@@ -365,7 +366,7 @@ class TS_triadShields: BaseShipSystemScript(), DamageTakenModifier {
                         if (check.customData["TS_triadShieldsNOCHECK"] == true) continue
 
                         val point = MathUtils.getPointOnCircumference(check.location, check.collisionRadius, VectorUtils.getAngle(check.location, ship.location))
-                        if (!checkCollision(point, check,)) continue
+                        if (!checkCollision(point, check)) continue
 
                         takeDamage(check.damage, check)
                         break
@@ -436,6 +437,11 @@ class TS_triadShields: BaseShipSystemScript(), DamageTakenModifier {
             realDamage *= fluxEfficiency
             if (damage.isDps) realDamage *= 0.1f
             val realLoc = getRealLoc()
+
+            if (isBroken()) {
+                suppress(realDamage)
+                return
+            }
 
             val currHp = health
             adjustHealth(-realDamage)
@@ -533,6 +539,10 @@ class TS_triadShields: BaseShipSystemScript(), DamageTakenModifier {
             }
         }
 
+        private fun suppress(realDamage: Float) {
+            downtime = (downtime + ((realDamage / SHIELD_BREAK_DURATION_DAMAGE_DIVISOR) * 0.25f)).coerceAtLeast(0.1f).coerceAtMost(MAX_DOWNTIME)
+        }
+
         private fun propogateRemainingDamage(
             damage: DamageAPI,
             source: DamagingProjectileAPI?
@@ -601,7 +611,7 @@ class TS_triadShields: BaseShipSystemScript(), DamageTakenModifier {
         }
 
         private fun shieldBroken(amount: Float) {
-            downtime = (BASE_SHIELD_DOWNTIME * (amount / SHIELD_BREAK_DURATION_DAMAGE_DIVISOR)).coerceAtLeast(BASE_SHIELD_DOWNTIME)
+            downtime = (BASE_SHIELD_DOWNTIME * (amount / SHIELD_BREAK_DURATION_DAMAGE_DIVISOR)).coerceAtLeast(BASE_SHIELD_DOWNTIME).coerceAtMost(MAX_DOWNTIME)
         }
 
         /**

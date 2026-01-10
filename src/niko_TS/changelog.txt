@@ -1,3 +1,9 @@
+1.2.2
+SAVE COMPATBILE
+
+Triad shields OP increased
+Triad shields are now suppressed by incoming fire if they are down
+
 1.2.1
 SAVE COMPATIBLE
 
