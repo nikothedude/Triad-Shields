@@ -17,7 +17,7 @@ import java.awt.Color
 class TS_triadShieldsHmod: BaseHullMod() {
 
     companion object {
-        const val SMOD_DAMAGE_TAKEN_MULT = 1.05f
+        const val SMOD_DAMAGE_TAKEN_MULT = 1.5f
     }
 
     override fun applyEffectsBeforeShipCreation(hullSize: ShipAPI.HullSize?, stats: MutableShipStatsAPI?, id: String?) {
@@ -64,7 +64,7 @@ class TS_triadShieldsHmod: BaseHullMod() {
         )
 
         tooltip.addPara(
-            "The skinshield is ineffective against %s and %s, with %s being able to cripple entire regions of the shield generator, and %s being able to %s.",
+            "The skinshield is partially ineffective against %s and %s, with %s being able to cripple entire regions of the shield generator, and %s being able to %s.",
             5f,
             Misc.getHighlightColor(),
             "explosives", "beams", "explosives", "beams", "partially penetrate"
@@ -77,13 +77,6 @@ class TS_triadShieldsHmod: BaseHullMod() {
         )
 
         tooltip.addSectionHeading("Stats", Alignment.MID, 5f)
-
-        tooltip.addPara(
-            "The %s of each segment is dependent on the efficiency of the parent shield, with a flux efficiency of %s being used in leu.",
-            5f,
-            Misc.getHighlightColor(),
-            "shield efficiency", "one"
-        )
 
         if (!isForModSpec && !Global.getSettings().isShowingCodex) {
             val shield = ship?.shield

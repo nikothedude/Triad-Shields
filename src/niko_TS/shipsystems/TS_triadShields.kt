@@ -43,11 +43,12 @@ class TS_triadShields: BaseShipSystemScript(), DamageTakenModifier {
         const val SHIELD_SIZE_INVERSE = 1f
         const val BEAM_DAMAGE_TAKEN_MULT = 0.75f
         const val EXPLOSION_DAMAGE_TAKEN_MULT = 0.4f
-        const val OFFLINE_REGEN_MULT = 3f
+        const val OFFLINE_REGEN_MULT = 1.5f
         const val EXTRA_BOUNDS_RANGE = 1.1f // so shots cant slip through easily
+        const val BASE_SHIELD_EFF = 0.75f
 
-        const val BASE_SHIELD_DOWNTIME = 5f
-        const val SHIELD_BREAK_DURATION_DAMAGE_DIVISOR = 250f
+        const val BASE_SHIELD_DOWNTIME = 12f
+        const val SHIELD_BREAK_DURATION_DAMAGE_DIVISOR = 100f
         const val MAX_DOWNTIME = 20f
 
         const val RAYCAST_FAIL_TIMES_TIL_END = 25
@@ -199,6 +200,12 @@ class TS_triadShields: BaseShipSystemScript(), DamageTakenModifier {
         fun checkCollision(loc: Vector2f, entity: DamagingProjectileAPI? = null): Boolean {
             if (entity?.source == ship || entity?.owner == ship.owner && (entity.collisionClass == CollisionClass.MISSILE_NO_FF || entity.collisionClass == CollisionClass.PROJECTILE_NO_FF)) {
                 return false
+            }
+            if (ship.isStationModule) {
+                val siblings = ship.parentStation.childModulesCopy + ship.parentStation
+                if (entity?.source != null && entity.source in siblings) {
+                    return false
+                }
             }
 
             var loc = loc
@@ -376,7 +383,7 @@ class TS_triadShields: BaseShipSystemScript(), DamageTakenModifier {
         }
 
         private fun adjustShieldParams() {
-            fluxEfficiency = (ship.shield?.fluxPerPointOfDamage ?: 1f) * (getCoherencyMult()) * (getSMODMult())
+            fluxEfficiency = BASE_SHIELD_EFF * (getCoherencyMult()) * (getSMODMult())
         }
 
         fun isSmod(): Boolean {
@@ -971,7 +978,7 @@ class TS_triadShields: BaseShipSystemScript(), DamageTakenModifier {
         if (param is DamagingExplosion) return blockExplosion(param, point, damage)
         if (param is BeamAPI) return blockBeam(param, point, damage)
         if (param is EmpArcEntityAPI) return blockArc(param,  param.targetLocation, ReflectionUtilsTwo.get("origPoint", param) as? Vector2f ?: param.location, damage)
-        if (param == "EMP_SHIP_SYSTEM_PARAM") return blockArc(null, damage.stats.entity.location, point, damage)
+        if (param == "EMP_SHIP_SYSTEM_PARAM" && damage.stats?.entity != null) return blockArc(null, damage.stats.entity.location, point, damage)
 
         return null
     }

@@ -1,3 +1,13 @@
+1.2.3
+SAVE COMPATIBLE
+
+Triad shields smod penalty now increases damage taken to 1.5x
+Efficiency no longer based on shield efficiency, now just a flat 0.75
+
+Shield down regen mult now 1.5x
+
+All these combined turns triad shields into a powerful defensive tool but only for a short time
+
 1.2.2
 SAVE COMPATBILE
 

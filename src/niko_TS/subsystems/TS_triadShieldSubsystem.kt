@@ -28,10 +28,10 @@ class TS_triadShieldSubsystem(ship: ShipAPI): MagicShipSystemSubsystem(ship) {
 
     override fun shouldActivateAI(amount: Float): Boolean {
         if (state == State.ACTIVE || state == State.IN) {
-            return ai?.getCommand() == TS_triadShieldsAICore.Command.DEACTIVATE
+            return ai.getCommand() == TS_triadShieldsAICore.Command.DEACTIVATE
         }
         if (state == State.READY || state == State.OUT) {
-            return ai?.getCommand() == TS_triadShieldsAICore.Command.ACTIVATE
+            return ai.getCommand() == TS_triadShieldsAICore.Command.ACTIVATE
         }
         return false
     }
@@ -79,7 +79,7 @@ class TS_triadShieldSubsystem(ship: ShipAPI): MagicShipSystemSubsystem(ship) {
             Global.getSoundPlayer().playLoop(spec.loopSound, ship, 1f, 1f, ship.location, Misc.ZERO, 1f, 0f)
         }
 
-        if (ship.fluxTracker.isVenting || ship.fluxTracker.isOverloaded) {
+        if (ship.fluxTracker.isOverloadedOrVenting) {
             if (state != State.OUT && state != State.READY && state != State.COOLDOWN) {
                 setState(State.OUT)
             }
